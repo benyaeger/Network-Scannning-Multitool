@@ -1,16 +1,37 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from scapy.layers.inet import IP, TCP, UDP, sr1, ICMP, sr
+from scapy.layers.l2 import ARP
+from scapy.layers.dhcp import DHCP
+from socket import *
+import ipaddress
+import psutil
 
 
-# Press the green button in the gutter to run the script.
+def get_subnet_mask(interfaceType):
+    try:
+        # get all network interfaces on machine
+        net_if_addrs = psutil.net_if_addrs()
+        # If desired interface type exists
+        if interfaceType in net_if_addrs:
+            for addr in net_if_addrs[interfaceType]:
+                # addr.family value of 2 is IPv4
+                if addr.family == 2:
+                    # return subnet mask of interface
+                    return addr.netmask
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+
+def lan_scan():
+    localhost_addr = ipaddress.IPv4Address(gethostbyname(gethostname()))
+    network = ipaddress.IPv4Network(f"{localhost_addr}/{get_subnet_mask("Ethernet")}", strict=False)
+    broadcast_addr = str(network.broadcast_address)
+    broadcast_packet = IP(dst=broadcast_addr) / UDP() / ARP()
+    # Needs to form ARP packets
+    print(broadcast_packet.show())
+    ans, _ = sr(broadcast_packet, timeout=2, verbose=2)
+    print(ans.summary())
+
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    lan_scan()
