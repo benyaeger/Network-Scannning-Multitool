@@ -1,18 +1,17 @@
-from scapy.layers.inet import IP, TCP, UDP, sr1, ICMP, sr
+from scapy.layers.inet import IP, TCP, UDP, sr1, ICMP, sr, Ether
 from scapy.layers.l2 import ARP
-from scapy.layers.dhcp import DHCP
-from socket import *
-import ipaddress
+from scapy.sendrecv import sendp
+from scapy.all import sniff
 import psutil
 
 
-def get_subnet_mask(interfaceType):
+def get_subnet_mask(interface_type):
     try:
         # get all network interfaces on machine
         net_if_addrs = psutil.net_if_addrs()
         # If desired interface type exists
-        if interfaceType in net_if_addrs:
-            for addr in net_if_addrs[interfaceType]:
+        if interface_type in net_if_addrs:
+            for addr in net_if_addrs[interface_type]:
                 # addr.family value of 2 is IPv4
                 if addr.family == 2:
                     # return subnet mask of interface
@@ -23,14 +22,16 @@ def get_subnet_mask(interfaceType):
 
 
 def lan_scan():
-    localhost_addr = ipaddress.IPv4Address(gethostbyname(gethostname()))
-    network = ipaddress.IPv4Network(f"{localhost_addr}/{get_subnet_mask("Ethernet")}", strict=False)
-    broadcast_addr = str(network.broadcast_address)
-    broadcast_packet = IP(dst=broadcast_addr) / UDP() / ARP()
-    # Needs to form ARP packets
-    print(broadcast_packet.show())
-    ans, _ = sr(broadcast_packet, timeout=2, verbose=2)
-    print(ans.summary())
+    packets = []
+    for mask in range(1, 255):
+        dst = '10.0.0.' + str(mask)
+        p = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=dst)
+        packets.append(p)
+    sendp(packets)
+    answer_packets = sniff(timeout=5, filter="arp")  # Capture ARP reply packets with op code 2 (reply)
+    print(answer_packets)
+    for answer in answer_packets:
+        print('{} responded and is Online.'.format(answer.psrc))
 
 
 if __name__ == '__main__':
