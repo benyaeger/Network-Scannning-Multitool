@@ -52,20 +52,20 @@ def os_detect():
 def port_scan():
     host = input("Enter Target Host: ")
     ans, _ = sr(IP(dst=host) / TCP(dport=(0, 1023), flags='S'), verbose=0, timeout=5)
-    openports = []
+    open_ports = []
     for sent, received in ans:
         if received.haslayer(TCP) and received.haslayer(IP):
             tcp_layer = received.getlayer(TCP)
         else:
             continue
         if tcp_layer.flags == 'SA':
-            openports.append(received)
+            open_ports.append(received)
             try:
                 service = getservbyport(tcp_layer.sport)
             except OSError:
                 service = 'unknown'
             print("port {} ({}) is open".format(tcp_layer.sport, service))
-    if len(openports) == 0: print("No Open Ports was Found on host {}".format(host))
+    if len(open_ports) == 0: print("No Open Ports was Found on host {}".format(host))
 
 
 def esc():
@@ -83,7 +83,7 @@ operations = {
 def tool_picker():
     print("What would you like to perform?")
     for key in operations:
-        print("({}) {}".format(key,operations[key].__name__))
+        print("({}) {}".format(key, operations[key].__name__))
     picked_operation = input()
     operations[int(picked_operation)]()
 
