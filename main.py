@@ -4,6 +4,8 @@ from scapy.all import sniff
 from scapy.layers.inet import Ether, IP, sr, TCP
 from scapy.layers.l2 import ARP
 from scapy.sendrecv import sendp
+import networkx as nx
+import matplotlib.pyplot as plt
 
 
 def intro_print():
@@ -31,6 +33,28 @@ def lan_scan():
         online_hosts.add(answer.psrc)
 
     print('{} hosts found in the LAN: {}'.format(len(online_hosts), online_hosts))
+    should_visualize = input("Preview Network Graph? (Y/N)")
+    if should_visualize.upper() == "Y":
+        localhost = gethostbyname(gethostname())
+        g = nx.Graph()
+        online_hosts = list(online_hosts)
+        for host in online_hosts:
+            g.add_edge(localhost, host)
+        options = {
+            "font_size": 10,
+            "node_size": 4000,
+            "node_color": "orange",
+            "edgecolors": "black",
+            "linewidths": 4,
+            "width": 5,
+        }
+        nx.draw_networkx(g, **options)
+        ax = plt.gca()
+        ax.margins(0.20)
+        plt.axis("off")
+        plt.show()
+    else:
+        pass
 
 
 def os_detect():
