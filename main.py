@@ -4,6 +4,7 @@ from scapy.all import sniff
 from scapy.layers.inet import Ether, IP, sr, TCP
 from scapy.layers.l2 import ARP
 from scapy.sendrecv import sendp
+from scapy.all import get_if_addr, conf
 
 
 def intro_print():
@@ -15,8 +16,16 @@ def intro_print():
 def lan_scan():
     print("Scanning Network for Online Hosts...")
     packets = []
+    # Automatically get the default network interface
+    interface = conf.iface
+    local_ip = get_if_addr(interface)
+    subnet_prefix = ".".join(local_ip.split('.')[0:3]) + '.'
+
+    print(f"Local IP: {local_ip}")
+    print(f"Subnet Prefix: {subnet_prefix}")
+
     for mask in range(1, 255):
-        dst = '10.0.0.' + str(mask)
+        dst = subnet_prefix + str(mask)
         if dst == gethostbyname(gethostname()):
             continue
         p = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=dst)
@@ -25,7 +34,7 @@ def lan_scan():
         packets.append(p)
     sendp(packets, verbose=0)
     answer_packets = sniff(timeout=5, filter="arp")  # Capture ARP reply packets with op code 2 (reply)
-
+    print(answer_packets)
     online_hosts = set()
     for answer in answer_packets:
         online_hosts.add(answer.psrc)
