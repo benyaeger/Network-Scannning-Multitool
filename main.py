@@ -9,7 +9,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
-
 def intro_print():
     print('*' * 50)
     print("Welcome to Ben's Network Multitool")
