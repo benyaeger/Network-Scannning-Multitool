@@ -40,7 +40,7 @@ def lan_scan():
     print(f"Subnet Prefix: {subnet_prefix}")
 
     threads = []
-    for i in range(1, 255, 64):
+    for i in range(0, 255, 64):
         print(f"Starting scan from {subnet_prefix}{i}.1 to {subnet_prefix}{i + 64}.255")
         t = threading.Thread(target=_scan_subnet, args=(subnet_prefix, i, min(i + 64, 255), 1, 255))
         threads.append(t)
