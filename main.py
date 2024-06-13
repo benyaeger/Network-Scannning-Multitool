@@ -7,6 +7,7 @@ from scapy.sendrecv import sendp
 from scapy.all import get_if_addr, conf
 import networkx as nx
 import matplotlib.pyplot as plt
+import threading
 
 
 def intro_print():
@@ -15,26 +16,37 @@ def intro_print():
     print('*' * 50)
 
 
+def _scan_subnet(subnet_prefix, startA, endA, startB, endB):
+    packets = []
+    for maskA in range(startA, endA):
+        for maskB in range(startB, endB):
+            dst = subnet_prefix + str(maskA) + '.' + str(maskB)
+            print(dst)
+            if dst == gethostbyname(gethostname()):
+                continue
+            p = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=dst)
+            packets.append(p)
+    sendp(packets, verbose=0)
+
+
 def lan_scan():
     print("Scanning Network for Online Hosts...")
-    packets = []
     # Automatically get the default network interface
     interface = conf.iface
     local_ip = get_if_addr(interface)
-    subnet_prefix = ".".join(local_ip.split('.')[0:3]) + '.'
+    subnet_prefix = ".".join(local_ip.split('.')[0:2]) + '.'
 
     print(f"Local IP: {local_ip}")
     print(f"Subnet Prefix: {subnet_prefix}")
 
-    for mask in range(1, 255):
-        dst = subnet_prefix + str(mask)
-        if dst == gethostbyname(gethostname()):
-            continue
-        p = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=dst)
-        packets.append(p)
-        packets.append(p)
-        packets.append(p)
-    sendp(packets, verbose=0)
+    threads = []
+    for i in range(1, 255, 64):
+        print(f"Starting scan from {subnet_prefix}{i}.1 to {subnet_prefix}{i + 64}.255")
+        t = threading.Thread(target=_scan_subnet, args=(subnet_prefix, i, min(i + 64, 255), 1, 255))
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
     answer_packets = sniff(timeout=5, filter="arp")  # Capture ARP reply packets with op code 2 (reply)
     print(answer_packets)
     online_hosts = set()
