@@ -1,13 +1,10 @@
 from socket import *
 import nmap
-from scapy.all import sniff
-from scapy.layers.inet import Ether, IP, sr, TCP
-from scapy.layers.l2 import ARP
-from scapy.sendrecv import sendp
+from scapy.layers.inet import IP, sr, TCP
+from scapy.layers.l2 import arping
 from scapy.all import get_if_addr, conf
 import networkx as nx
 import matplotlib.pyplot as plt
-import threading
 
 
 def intro_print():
@@ -16,42 +13,24 @@ def intro_print():
     print('*' * 50)
 
 
-def _scan_subnet(subnet_prefix, startA, endA, startB, endB):
-    packets = []
-    for maskA in range(startA, endA):
-        for maskB in range(startB, endB):
-            dst = subnet_prefix + str(maskA) + '.' + str(maskB)
-            print(dst)
-            if dst == gethostbyname(gethostname()):
-                continue
-            p = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=dst)
-            packets.append(p)
-    sendp(packets, verbose=0)
-
-
 def lan_scan():
     print("Scanning Network for Online Hosts...")
     # Automatically get the default network interface
     interface = conf.iface
     local_ip = get_if_addr(interface)
-    subnet_prefix = ".".join(local_ip.split('.')[0:2]) + '.'
+    subnet = ".".join(local_ip.split('.')[0:3]) + ".0/24"
 
     print(f"Local IP: {local_ip}")
-    print(f"Subnet Prefix: {subnet_prefix}")
+    print(f"Subnet: {subnet}")
 
-    threads = []
-    for i in range(0, 255, 64):
-        print(f"Starting scan from {subnet_prefix}{i}.1 to {subnet_prefix}{i + 64}.255")
-        t = threading.Thread(target=_scan_subnet, args=(subnet_prefix, i, min(i + 64, 255), 1, 255))
-        threads.append(t)
-        t.start()
-    for t in threads:
-        t.join()
-    answer_packets = sniff(timeout=5, filter="arp")  # Capture ARP reply packets with op code 2 (reply)
-    print(answer_packets)
+    arp_answers, _ = arping(subnet, verbose=0)
+    print(arp_answers)
     online_hosts = set()
-    for answer in answer_packets:
-        online_hosts.add(answer.psrc)
+    for query_answer in arp_answers:
+        packet = query_answer.answer
+        found_host = packet["ARP"].psrc
+        online_hosts.add(found_host)
+    print(online_hosts)
 
     print('{} hosts found in the LAN: {}'.format(len(online_hosts), online_hosts))
     should_visualize = input("Preview Network Graph? (Y/N)")
